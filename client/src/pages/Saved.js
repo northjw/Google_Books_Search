@@ -1,83 +1,86 @@
 import React, { Component } from "react";
-import Jumbotron from "../components/Jumbotron";
-import Card from "../components/Card";
-import Book from "../components/Book";
-import Footer from "../components/Footer";
-import API from "../utils/API";
-import { Col, Row, Container } from "../components/Grid";
-import { List } from "../components/List";
 
-class Saved extends Component {
-  state = {
-    books: []
-  };
+import API from "../helpers/API";
 
-  componentDidMount() {
-    this.getSavedBooks();
-  }
+import SavedBookList from "../components/SavedBookList";
+import MessageBox from "../components/MessageBox";
+export default class Saved extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            savedBooks: [],
+            notif: {
+                isActive: false,
+                message: "",
+            },
+        };
+    }
 
-  getSavedBooks = () => {
-    API.getSavedBooks()
-      .then(res =>
-        this.setState({
-          books: res.data
-        })
-      )
-      .catch(err => console.log(err));
-  };
+    componentDidMount() {
+        API.getBooks()
+            .then((response) => {
+                this.setState({
+                    savedBooks: response.data,
+                });
+            })
+            .catch((err) => {
+                this.setState({
+                    notif: {
+                        isActive: true,
+                        type: "danger",
+                        message: "Something Went Wrong! Please try again!",
+                    },
+                });
+            });
+    }
 
-  handleBookDelete = id => {
-    API.deleteBook(id).then(res => this.getSavedBooks());
-  };
+    deleteBook(Id, Index) {
+        this.setState((state) => {
+            const savedBooks = state.savedBooks.filter(
+                (item, j) => Index !== j
+            );
 
-  render() {
-    return (
-      <Container>
-        <Row>
-          <Col size="md-12">
-            <Jumbotron>
-              <h1 className="text-center">
-                <strong>(React) Google Books Search</strong>
-              </h1>
-              <h2 className="text-center">Search for and Save Books of Interest.</h2>
-            </Jumbotron>
-          </Col>
-        </Row>
-        <Row>
-          <Col size="md-12">
-            <Card title="Saved Books" icon="download">
-              {this.state.books.length ? (
-                <List>
-                  {this.state.books.map(book => (
-                    <Book
-                      key={book._id}
-                      title={book.title}
-                      subtitle={book.subtitle}
-                      link={book.link}
-                      authors={book.authors.join(", ")}
-                      description={book.description}
-                      image={book.image}
-                      Button={() => (
-                        <button
-                          onClick={() => this.handleBookDelete(book._id)}
-                          className="btn btn-danger ml-2"
-                        >
-                          Delete
-                        </button>
-                      )}
+            return {
+                savedBooks,
+            };
+        });
+
+        API.deleteBook(Id)
+            .then((response) => {
+                this.setState({
+                    notif: {
+                        isActive: true,
+                        type: "success",
+                        message: "Successfully Deleted!",
+                    },
+                });
+            })
+            .catch((err) => {
+                this.setState({
+                    notif: {
+                        isActive: true,
+                        type: "danger",
+                        message: "Something Went Wrong! Please try again!",
+                    },
+                });
+            });
+    }
+
+    render() {
+        const { savedBooks, notif } = this.state;
+
+        return (
+            <div className="saved">
+                <MessageBox notif={notif} />
+                {savedBooks.length > 0 ? (
+                    <SavedBookList
+                        books={savedBooks}
+                        deleteBook={(id, index) => this.deleteBook(id, index)}
                     />
-                  ))}
-                </List>
-              ) : (
-                <h2 className="text-center">No Saved Books</h2>
-              )}
-            </Card>
-          </Col>
-        </Row>
-        <Footer />
-      </Container>
-    );
-  }
+                ) : (
+                    <p className="no-data">No Saved Books Yet!</p>
+                )}
+            </div>
+        );
+    }
 }
-
-export default Saved;
